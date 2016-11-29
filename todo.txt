@@ -1,9 +1,5 @@
 TODO:
 
-x Build and run a SIGIL example
 - Build and run a SIGIL+PortAudio combo
 
-- Push to github
-    - An OpenGL app skeleton might be useful
-
-- Fix Retina resolution on startup
+- Create a separate repo for the actual app
