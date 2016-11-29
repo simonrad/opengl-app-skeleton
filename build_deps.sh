@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
 
 set -e
-cd "$(dirname "$0")" # cd to directory of this script
+cd "$(dirname "$0")" # cd to directory of this script.
 
-# TODO: If brew does not exist, print "please install homebrew"
+command -v brew >/dev/null 2>&1 || {
+    # Homebrew is not installed.
+    echo >&2 "Please install homebrew and then re-run build_deps.sh. Aborting."
+    exit 1
+}
 
 brew tap homebrew/versions
-brew install portaudio cmake glew glfw3
+brew install portaudio cmake glew glfw3 freetype
 
-# TODO: If sigil does not exist, clone it from simonrad github
+if [ ! -d "sigil" ]; then
+    # Directory sigil does not exist, clone it.
+    git clone git@github.com:simonrad/sigil.git
+fi
 
 cd sigil
 

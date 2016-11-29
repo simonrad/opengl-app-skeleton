@@ -3,14 +3,7 @@ TODO:
 x Build and run a SIGIL example
 - Build and run a SIGIL+PortAudio combo
 
-- Flush out build_deps.sh
-    - If brew does not exist, print "please install homebrew"
-    - Install homebrew packages
-    - Clone sigil
-    - Edit sigil/CMakeLists.txt
-        - Apply a patch?
-        - Or, fork sigil?
-    - Build sigil
-
 - Push to github
     - An OpenGL app skeleton might be useful
+
+- Fix Retina resolution on startup

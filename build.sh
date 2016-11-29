@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set -e
-cd "$(dirname "$0")" # cd to directory of this script
+cd "$(dirname "$0")" # cd to directory of this script.
 
 OPTIONS='
     -Isigil/include
