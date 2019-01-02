@@ -9,8 +9,7 @@ command -v brew >/dev/null 2>&1 || {
     exit 1
 }
 
-brew tap homebrew/versions
-brew install portaudio cmake glew glfw3 freetype
+brew install portaudio cmake glew glfw freetype
 
 if [ ! -d "sigil" ]; then
     # Directory sigil does not exist, clone it.
