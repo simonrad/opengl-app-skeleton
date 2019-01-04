@@ -19,9 +19,11 @@ TODO:
           - Read any slice
           - Delete slice at left end
           - Get index of right/left end
-          - Get timestamp of last write/delete operation
-          - Get time span between deleter and writer
+          - Get timestamp of last write/delete/set_index operation
+          - Get time span between index and writer
           - PyAudio callbacks to read/write to PyAudio
+          - Get/set index variables
+          - Automatically delete everything to the left of lowest index
   - Create a musical keyboard?
       - ADSR style
           - 3 states: ADS phase, Release phase, FastRelease phase
@@ -34,8 +36,8 @@ TODO:
           - Either sum-of-differences or correlation
       - Search constraints
           - Start of next page should be after the end of current page
-          - If less than ~2 pages is available, wait
-          - If many pages are available, constrain the search space to the most recent ~3 pages
+          - If less than ~N pages are available, wait
+          - If many pages are available, constrain the search space to the most recent ~M pages
 '''
 
 import glfw
