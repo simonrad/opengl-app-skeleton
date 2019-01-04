@@ -9,7 +9,9 @@ Install dependencies with:
 
 TODO:
   - Do something with pyaudio
+      - Output a simple sine wave
   - Get some keyboard input
+      - Change pitch of the sine wave
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
@@ -18,7 +20,13 @@ TODO:
           - Delete slice at left end
           - Get index of right/left end
           - Get timestamp of last write/delete operation
+          - Get time span between deleter and writer
           - PyAudio callbacks to read/write to PyAudio
+  - Create a musical keyboard?
+      - ADSR style
+          - 3 states: ADS phase, Release phase, FastRelease phase
+              - FastRelease happens if you press a key during Release phase
+          - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
   - Write an oscilloscope app
       - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
           - If no zeros are available, give up and render the most recent page
