@@ -10,6 +10,15 @@ Install dependencies with:
 TODO:
   - Do something with pyaudio
   - Get some keyboard input
+  - Create a threadsafe producer/consumer stream class
+      - Use a threading.Lock() to lock all operations
+      - Operations
+          - Produce new slice at right end
+          - Read any slice
+          - Delete slice at left end
+          - Get index of right/left end
+          - Get timestamp of last write/delete operation
+          - PyAudio callbacks to read/write to PyAudio
   - Write an oscilloscope app
       - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
           - If no zeros are available, give up and render the most recent page
