@@ -9,7 +9,7 @@ Install dependencies with:
 
 TODO:
   - Do something with pyaudio
-      - Output a simple sine wave
+      - Output a simple sine wave using a callback
   - Get some keyboard input
       - Change pitch of the sine wave
   - Create a threadsafe producer/consumer stream class
@@ -17,13 +17,13 @@ TODO:
       - Operations
           - Produce new slice at right end
           - Read any slice
-          - Delete slice at left end
+          - Keep up to N samples (circular array)
           - Get index of right/left end
-          - Get timestamp of last write/delete/set_index operation
-          - Get time span between index and writer
-          - PyAudio callbacks to read/write to PyAudio
           - Get/set index variables
-          - Automatically delete everything to the left of lowest index
+          - PyAudio callbacks to read/write to PyAudio
+          - Get timestamp of last write/set_index operation
+          - Get time span between index and writer
+          - Get/set a "complete" flag
   - Create a musical keyboard?
       - ADSR style
           - 3 states: ADS phase, Release phase, FastRelease phase
