@@ -11,8 +11,10 @@ TODO:
   x Do something with pyaudio
       x Output a simple sine wave using blocking mode
       x Output a simple sine wave using a callback
+  x Potential Problem: Resizing the window blocks the main loop
+      x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
   - Get some keyboard input
-      - Change pitch of the sine wave
+      - Quit the program when 'Q' is pressed
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
@@ -25,11 +27,9 @@ TODO:
           - Get timestamp of last write/set_index operation
           - Get time span between index and writer
           - Get/set a "complete" flag
-  - Create a musical keyboard?
-      - ADSR style
-          - 3 states: ADS phase, Release phase, FastRelease phase
-              - FastRelease happens if you press a key during Release phase
-          - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
+  - Refactor the sine wave to integrate with the GLFW flow
+  - Get some keyboard input
+      - Change pitch of the sine wave
   - Write an oscilloscope app
       - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
           - If no zeros are available, give up and render the most recent page
@@ -39,6 +39,14 @@ TODO:
           - Start of next page should be after the end of current page
           - If less than ~N pages are available, wait
           - If many pages are available, constrain the search space to the most recent ~M pages
+  - Create a musical keyboard?
+      - ADSR style
+          - 3 states: ADS phase, Release phase, FastRelease phase
+              - FastRelease happens if you press a key during Release phase
+          - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
+      - Abstract the keyboard from the (single note) synth
+          - Keyboard will re-construct the synth if it shuts off and key is pressed
+          - Don't bother adding more abstraction than that
 '''
 
 import glfw
