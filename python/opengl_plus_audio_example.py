@@ -49,11 +49,16 @@ import struct
 import time
 
 
+# TODO: BUFFER_SIZE is unused
+# TODO: Ensure the main thread can still execute while the callback is executing (otherwise deadlock)
+
+
 # Audio constants
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 16384 # This is the max that PyAudio will allow
 MAX_SAMPLE = 2**15 - 1
 MIN_SAMPLE = -2**15
+BYTES_PER_SAMPLE = 2
 
 
 def number_to_bytes(n):
@@ -72,6 +77,50 @@ def bytes_to_number(b):
     return struct.unpack('<h', b)[0]
 
 
+def play_audio_with_callback():
+    data = ''.join(
+        number_to_bytes(
+            math.sin(
+                (float(t) / SAMPLE_RATE) * 2 * math.pi * 440
+            ) * MAX_SAMPLE
+        )
+        for t in range(int(SAMPLE_RATE * 2))
+    )
+
+    class Closure:
+        data_index = 0
+
+    pa = pyaudio.PyAudio()
+
+    def callback(in_data, frame_count, time_info, status):
+        # Note: A sleep in the callback less than time.sleep(0.02) does not affect the continuity of the sound
+        data_chunk = data[Closure.data_index : Closure.data_index + frame_count * BYTES_PER_SAMPLE]
+        Closure.data_index += frame_count * BYTES_PER_SAMPLE
+        return (data_chunk, pyaudio.paContinue)
+
+    output_stream = pa.open(
+        output=True,
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=SAMPLE_RATE,
+        frames_per_buffer=1024, # This is the default
+        stream_callback=callback,
+    )
+
+    start_time = time.time()
+    output_stream.start_stream()
+
+    # Wait for stream to finish
+    while output_stream.is_active():
+        time.sleep(0.01)
+
+    print 'done playing audio. elapsed = {:.2f}'.format(time.time() - start_time)
+
+    output_stream.stop_stream()
+    output_stream.close()
+    pa.terminate()
+
+
 def play_audio_blocking():
     pa = pyaudio.PyAudio()
 
@@ -80,7 +129,7 @@ def play_audio_blocking():
         format=pyaudio.paInt16,
         channels=1,
         rate=SAMPLE_RATE,
-        frames_per_buffer=BUFFER_SIZE,
+        frames_per_buffer=16384, # This is the max buffer size that PyAudio will allow
     )
 
     data = ''.join(
@@ -89,7 +138,7 @@ def play_audio_blocking():
                 (float(t) / SAMPLE_RATE) * 2 * math.pi * 440
             ) * MAX_SAMPLE
         )
-        for t in range(int(BUFFER_SIZE - 2))
+        for t in range(int(16384 - 2))
     )
 
     time.sleep(0.2)
@@ -179,7 +228,7 @@ class MyProgram(object):
 
 
 def main():
-    play_audio_blocking()
+    play_audio_with_callback()
     return
 
     # Initialize the library
