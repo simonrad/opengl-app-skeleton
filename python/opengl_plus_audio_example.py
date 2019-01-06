@@ -8,9 +8,9 @@ Install dependencies with:
   pip install glfw pyaudio PyOpenGL PyOpenGL_accelerate
 
 TODO:
-  - Do something with pyaudio
+  x Do something with pyaudio
       x Output a simple sine wave using blocking mode
-      - Output a simple sine wave using a callback
+      x Output a simple sine wave using a callback
   - Get some keyboard input
       - Change pitch of the sine wave
   - Create a threadsafe producer/consumer stream class
@@ -50,7 +50,6 @@ import time
 
 
 # TODO: BUFFER_SIZE is unused
-# TODO: Ensure the main thread can still execute while the callback is executing (otherwise deadlock)
 
 
 # Audio constants
@@ -94,6 +93,7 @@ def play_audio_with_callback():
 
     def callback(in_data, frame_count, time_info, status):
         # Note: A sleep in the callback less than time.sleep(0.02) does not affect the continuity of the sound
+        # Note: The main thread can still execute while the callback is executing
         data_chunk = data[Closure.data_index : Closure.data_index + frame_count * BYTES_PER_SAMPLE]
         Closure.data_index += frame_count * BYTES_PER_SAMPLE
         return (data_chunk, pyaudio.paContinue)
