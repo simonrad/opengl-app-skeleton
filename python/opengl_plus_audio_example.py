@@ -54,6 +54,7 @@ import math
 import OpenGL.GL as gl
 import pyaudio
 import struct
+import threading
 import time
 
 
@@ -168,6 +169,29 @@ def play_audio_blocking():
 
     print 'elapsed_done_writing = {:.2f}'.format(elapsed_done_writing)
     print 'elapsed_done_playing = {:.2f}'.format(elapsed_done_playing)
+
+
+class ThreadsafeStream(object):
+
+    # TODO
+    # - Use a threading.Lock() to lock all operations
+    # - Operations
+    #     - Produce new slice at right end
+    #     - Read any slice
+    #     - Keep up to N samples (circular array)
+    #     - Get index of right/left end
+    #     - Get/set index variables
+    #     - PyAudio callbacks to read/write to PyAudio
+    #     - Get timestamp of last write/set_index operation
+    #     - Get time span between index and writer
+    #     - Get/set a "complete" flag
+
+    def __init__(self, maxSize=SAMPLE_RATE * 5):
+        self.lock = threading.Lock()
+        self.list = []
+        self.start_index = 0
+        self.index_vars = {} # Map from index_name to (index, last_updated_timestamp)
+        self.last_append_timestamp = time.time()
 
 
 class MyProgram(object):
