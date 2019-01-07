@@ -13,8 +13,8 @@ TODO:
       x Output a simple sine wave using a callback
   x Potential Problem: Resizing the window blocks the main loop
       x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
-  - Get some keyboard input
-      - Quit the program when 'Q' is pressed
+  x Get some keyboard input
+      x Quit the program when 'Q' is pressed
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
@@ -236,8 +236,8 @@ class MyProgram(object):
 
 
 def main():
-    play_audio_with_callback()
-    return
+    # play_audio_with_callback()
+    # return
 
     # Initialize the library
     if not glfw.init():
@@ -255,7 +255,7 @@ def main():
     my_program = MyProgram(window)
 
     # Loop until the user closes the window
-    while not glfw.window_should_close(window):
+    while not glfw.window_should_close(window) and glfw.get_key(window, ord('Q')) != glfw.PRESS:
         my_program.perform_frame()
 
         # Swap front and back buffers
