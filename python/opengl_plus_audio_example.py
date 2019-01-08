@@ -18,17 +18,16 @@ TODO:
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
-          - Produce new slice at right end
-          - Read any slice
-          - Keep up to N samples (circular array)
-          - Get index of right/left end
-          - Get/set index variables
+          x Produce new slice at right end
+          x Read any slice
+          x Keep up to N samples
+          x Get index of right/left end
+          x Get/set index variables
+          x Get timestamp of last write/set_index operation
+          x Get time span between index and writer
           - PyAudio callbacks to read/write to PyAudio
-          - Get timestamp of last write/set_index operation
-          - Get time span between index and writer
-          - Get/set a "complete" flag
   - Refactor the sine wave to integrate with the GLFW flow
-  - Get some keyboard input
+  - Get some keyboard/mouse input
       - Change pitch of the sine wave
   - Write an oscilloscope app
       - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
@@ -54,6 +53,7 @@ import math
 import OpenGL.GL as gl
 import pyaudio
 import struct
+import sys
 import threading
 import time
 
@@ -172,26 +172,95 @@ def play_audio_blocking():
 
 
 class ThreadsafeStream(object):
+    '''
+    A threadsafe object representing a list supporting 2 main operations:
+        - extend()
+        - __getslice__();  i.e. threadsafe_stream[10:20]
 
-    # TODO
-    # - Use a threading.Lock() to lock all operations
-    # - Operations
-    #     - Produce new slice at right end
-    #     - Read any slice
-    #     - Keep up to N samples (circular array)
-    #     - Get index of right/left end
-    #     - Get/set index variables
-    #     - PyAudio callbacks to read/write to PyAudio
-    #     - Get timestamp of last write/set_index operation
-    #     - Get time span between index and writer
-    #     - Get/set a "complete" flag
+    When the length of the internal list becomes larger than maxSize, the left
+    side of the list is trimmed to make the list exactly maxSize in length.
+    The indices are preserved, however. So for example you will no longer be
+    able to read index 0 of the stream.
+    '''
 
     def __init__(self, maxSize=SAMPLE_RATE * 5):
-        self.lock = threading.Lock()
-        self.list = []
-        self.start_index = 0
-        self.index_vars = {} # Map from index_name to (index, last_updated_timestamp)
-        self.last_append_timestamp = time.time()
+        self._lock = threading.RLock()
+        self._maxSize = maxSize
+        self._list = []
+        self._start_index = 0
+        self._index_vars = {} # Map from index_name to (index, last_updated_timestamp)
+        self._last_extend_timestamp = time.time()
+
+    def extend(self, new_slice):
+        ''' Produce a new slice at the right end '''
+        with self._lock:
+            self._list.extend(new_slice)
+            self._last_extend_timestamp = time.time()
+            num_to_delete = len(self._list) - self._maxSize
+            if num_to_delete > 0:
+                del self._list[0 : num_to_delete]
+                self._start_index += num_to_delete
+
+    def __getslice__(self, begin, end):
+        with self._lock:
+            if 0 <= begin < sys.maxint:
+                begin = max(0, begin - self._start_index)
+            if 0 <= end < sys.maxint:
+                end = max(0, end - self._start_index)
+            return self._list[begin : end]
+
+    def __len__(self, yyy):
+        with self._lock:
+            return len(self._list)
+
+    @property
+    def lock(self):
+        return self._lock
+
+    @property
+    def left_index(self):
+        with self._lock:
+            return self._start_index
+
+    @property
+    def right_index(self):
+        with self._lock:
+            return self._start_index + len(self._list)
+
+    def set_index(self, index_name, new_value):
+        with self._lock:
+            self._index_vars[index_name] = (new_value, time.time())
+
+    def get_index(self, index_name):
+        with self._lock:
+            return self._index_vars[index_name][0]
+
+    def get_index_timestamp(self, index_name):
+        with self._lock:
+            return self._index_vars[index_name][1]
+
+    @property
+    def last_extend_timestamp(self):
+        with self._lock:
+            return self._last_extend_timestamp
+
+    def get_time_span(self, index_name, sample_rate):
+        '''
+        Get time span (in seconds) between index and writer.
+        Assumes that both indices move to the right at a rate of sample_rate list items per second.
+        '''
+        with self._lock:
+            return (self.right_index - self.get_index(index_name)) / float(sample_rate) + (self.get_index_timestamp(index_name) - self._last_extend_timestamp)
+
+    def pyaudio_input_callback(self, TODO):
+        ''' TODO '''
+        with self._lock:
+            pass
+
+    def pyaudio_output_callback(self, TODO):
+        ''' TODO '''
+        with self._lock:
+            pass
 
 
 class MyProgram(object):
