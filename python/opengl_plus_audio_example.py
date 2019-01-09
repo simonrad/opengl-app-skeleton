@@ -15,6 +15,7 @@ TODO:
       x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
   x Get some keyboard input
       x Quit the program when 'Q' is pressed
+  - Fix the coordinates on Retina screens
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
@@ -236,6 +237,11 @@ class ThreadsafeStream(object):
         with self._lock:
             self._index_vars[index_name] = (new_value, time.time())
 
+    def set_index_default(self, index_name, new_value_if_nonexistent):
+        with self._lock:
+            if index_name not in self._index_vars:
+                self._index_vars[index_name] = (new_value, time.time())
+
     def get_index(self, index_name):
         with self._lock:
             return self._index_vars[index_name][0]
@@ -243,6 +249,10 @@ class ThreadsafeStream(object):
     def get_index_timestamp(self, index_name):
         with self._lock:
             return self._index_vars[index_name][1]
+
+    def get_all_index_names(self):
+        with self._lock:
+            return self._index_vars.keys()
 
     @property
     def last_extend_timestamp(self):
