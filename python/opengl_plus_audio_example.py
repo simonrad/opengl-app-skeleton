@@ -15,7 +15,7 @@ TODO:
       x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
   x Get some keyboard input
       x Quit the program when 'Q' is pressed
-  - Fix the coordinates on Retina screens
+  x Fix the coordinates on Retina screens
   - Create a threadsafe producer/consumer stream class
       - Use a threading.Lock() to lock all operations
       - Operations
@@ -286,8 +286,8 @@ class MyProgram(object):
 
     def perform_frame(self):
         self.before_frame()
-        self.reinitialize_viewport()
-        self.initialize_opengl()
+        self.initialize_viewport() # Note: This could be called just once at startup, instead
+        self.initialize_opengl()   # Note: This could be called just once at startup, instead
         self.render()
 
     def before_frame(self):
@@ -297,11 +297,15 @@ class MyProgram(object):
         print '{:.3f} seconds elapsed between frames. FPS = {:.1f}'.format(elapsed, fps)
         self.time_of_last_frame = now
 
-    def reinitialize_viewport(self):
-        (w, h) = glfw.get_window_size(self.window)
+    def initialize_viewport(self):
+        return # This function currently has no effect, since all these settings are the default settings
+
+        # Note: On Retina screens, pixel_w is 2x greater than window_w
+        (window_w, window_h) = glfw.get_window_size(self.window)
+        (pixel_w, pixel_h) = glfw.get_framebuffer_size(self.window)
 
         # Paint within the whole window
-        gl.glViewport(0, 0, w, h)
+        gl.glViewport(0, 0, pixel_w, pixel_h)
 
         # Set orthographic projection (2D only)
         gl.glMatrixMode(gl.GL_PROJECTION)
