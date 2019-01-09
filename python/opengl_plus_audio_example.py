@@ -43,9 +43,14 @@ TODO:
           - 3 states: ADS phase, Release phase, FastRelease phase
               - FastRelease happens if you press a key during Release phase
           - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
+              - Idea: Have the harmonics change their loudness randomly over time
       - Abstract the keyboard from the (single note) synth
           - Keyboard will re-construct the synth if it shuts off and key is pressed
           - Don't bother adding more abstraction than that
+      - Controller ideas
+          - Control different synths with different parts of the keyboard
+          - Let you "slide" smoothly between notes (instead of letting you play multiple notes at once) by pressing one key while holding another
+          - Control a synth with the mouse (volume and pitch)
 '''
 
 import glfw
