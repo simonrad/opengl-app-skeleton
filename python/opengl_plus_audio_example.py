@@ -28,23 +28,6 @@ TODO:
             x Get time span between index and writer
             x PyAudio callbacks to read/write to PyAudio
     - Refactor the sine wave to integrate with the GLFW flow
-        pa = pyaudio.PyAudio()
-        output_stream = pa.open(
-            output=True,
-            format=pyaudio.paInt16,
-            channels=1,
-            rate=SAMPLE_RATE,
-            frames_per_buffer=1024, # This is the default
-            stream_callback=callback,
-        )
-        output_stream.start_stream()
-
-        while output_stream.is_active():
-            time.sleep(0.01)
-
-        output_stream.stop_stream()
-        output_stream.close()
-        pa.terminate()
     - Get some keyboard/mouse input
         - Change pitch of the sine wave
     - Write an oscilloscope app
@@ -81,12 +64,8 @@ import threading
 import time
 
 
-# TODO: BUFFER_SIZE is unused
-
-
 # Audio constants
 SAMPLE_RATE = 44100
-BUFFER_SIZE = 16384 # This is the max that PyAudio will allow
 MAX_SAMPLE = 2**15 - 1
 MIN_SAMPLE = -2**15
 BYTES_PER_SAMPLE = 2
@@ -310,7 +289,10 @@ class ThreadsafeStream(object):
         time_info,    # Dictionary
         status_flags  # PaCallbackFlags
     ):
-        ''' Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample. '''
+        '''
+        Reads from PyAudio and writes to this ThreadsafeStream.
+        Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample.
+        '''
         with self._lock:
             if status_flags:
                 print 'Warning: status_flags is {} in pyaudio_input_callback()'.format(status_flags)
@@ -325,7 +307,10 @@ class ThreadsafeStream(object):
         time_info,    # Dictionary
         status_flags  # PaCallbackFlags
     ):
-        ''' Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample. '''
+        '''
+        Consumes from this ThreadsafeStream and writes to PyAudio.
+        Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample.
+        '''
         with self._lock:
             if status_flags:
                 print 'Warning: status_flags is {} in pyaudio_output_callback()'.format(status_flags)
@@ -348,8 +333,9 @@ class ThreadsafeStream(object):
 
 class MyProgram(object):
 
-    def __init__(self, window):
+    def __init__(self, window, output_stream):
         self.window = window
+        self.output_stream = output_stream
         self.time_of_last_frame = time.time()
 
     def perform_frame(self):
@@ -416,10 +402,7 @@ class MyProgram(object):
 
 
 def main():
-    # play_audio_with_callback()
-    # return
-
-    # Initialize the library
+    # Initialize GLFW
     if not glfw.init():
         return
 
@@ -432,10 +415,29 @@ def main():
     # Make the window's context current
     glfw.make_context_current(window)
 
-    my_program = MyProgram(window)
+    # Initialize PyAudio
+    pa = pyaudio.PyAudio()
+
+    # Create a ThreadsafeStream object to be the pipe between the PyAudio callback thread and our main loop/thread
+    my_output_stream = ThreadsafeStream()
+
+    # Create an output PyAudio stream that will consume from my_output_stream
+    pa_output_stream = pa.open(
+        output=True,
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=SAMPLE_RATE,
+        frames_per_buffer=1024, # This is the default
+        stream_callback=my_output_stream.pyaudio_output_callback,
+    )
+    pa_output_stream.start_stream()
+
+    my_program = MyProgram(window, my_output_stream)
 
     # Loop until the user closes the window
     while not glfw.window_should_close(window) and glfw.get_key(window, ord('Q')) != glfw.PRESS:
+        assert pa_output_stream.is_active()
+
         my_program.perform_frame()
 
         # Swap front and back buffers
@@ -443,6 +445,10 @@ def main():
 
         # Poll for and process events
         glfw.poll_events()
+
+    pa_output_stream.stop_stream()
+    pa_output_stream.close()
+    pa.terminate()
 
     glfw.terminate()
 
