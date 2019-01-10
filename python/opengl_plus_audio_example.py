@@ -30,6 +30,7 @@ TODO:
     - Refactor the sine wave to integrate with the GLFW flow
     - Get some keyboard/mouse input
         - Change pitch of the sine wave
+    - Clean up the code
     - Write an oscilloscope app
         - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
             - If no zeros are available, give up and render the most recent page
@@ -69,6 +70,7 @@ SAMPLE_RATE = 44100
 MAX_SAMPLE = 2**15 - 1
 MIN_SAMPLE = -2**15
 BYTES_PER_SAMPLE = 2
+TARGET_TIME_SPAN = 0.05
 
 
 def number_to_bytes(n):
@@ -340,6 +342,7 @@ class MyProgram(object):
 
     def perform_frame(self):
         self.before_frame()
+        self.perform_audio()
         self.initialize_viewport() # Note: This could be called just once at startup, instead
         self.initialize_opengl()   # Note: This could be called just once at startup, instead
         self.render()
@@ -348,8 +351,18 @@ class MyProgram(object):
         now = time.time()
         elapsed = now - self.time_of_last_frame
         fps = 1 / elapsed
+        print
         print '{:.3f} seconds elapsed between frames. FPS = {:.1f}'.format(elapsed, fps)
         self.time_of_last_frame = now
+
+    def perform_audio(self):
+        self.output_stream.set_index_default('pyaudio_output', 0)
+        self.output_stream.extend([]) # Force last_extend_timestamp to be now
+        time_span = self.output_stream.get_time_span('pyaudio_output', SAMPLE_RATE)
+        print 'time_span is {:.4f}'.format(time_span)
+        num_samples_to_generate = max(0, int((TARGET_TIME_SPAN - time_span) * SAMPLE_RATE))
+        print 'Need to generate {} samples'.format(num_samples_to_generate)
+        # TODO
 
     def initialize_viewport(self):
         return # This function currently has no effect, since all these settings are the default settings
@@ -403,16 +416,11 @@ class MyProgram(object):
 
 def main():
     # Initialize GLFW
-    if not glfw.init():
-        return
+    assert glfw.init()
 
     # Create a windowed mode window and its OpenGL context
     window = glfw.create_window(640, 480, 'Hello World', None, None)
-    if not window:
-        glfw.terminate()
-        return
-
-    # Make the window's context current
+    assert window
     glfw.make_context_current(window)
 
     # Initialize PyAudio
