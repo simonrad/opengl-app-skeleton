@@ -4,54 +4,71 @@
 Some simple 2D graphics with glfw and PyOpenGL, and sound with pyaudio.
 
 Install dependencies with:
-  brew install glfw portaudio
-  pip install glfw pyaudio PyOpenGL PyOpenGL_accelerate
+    brew install glfw portaudio
+    pip install glfw pyaudio PyOpenGL PyOpenGL_accelerate
 
 TODO:
-  x Do something with pyaudio
-      x Output a simple sine wave using blocking mode
-      x Output a simple sine wave using a callback
-  x Potential Problem: Resizing the window blocks the main loop
-      x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
-  x Get some keyboard input
-      x Quit the program when 'Q' is pressed
-  x Fix the coordinates on Retina screens
-  - Create a threadsafe producer/consumer stream class
-      - Use a threading.Lock() to lock all operations
-      - Operations
-          x Produce new slice at right end
-          x Read any slice
-          x Keep up to N samples
-          x Get index of right/left end
-          x Get/set index variables
-          x Get timestamp of last write/set_index operation
-          x Get time span between index and writer
-          - PyAudio callbacks to read/write to PyAudio
-  - Refactor the sine wave to integrate with the GLFW flow
-  - Get some keyboard/mouse input
-      - Change pitch of the sine wave
-  - Write an oscilloscope app
-      - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
-          - If no zeros are available, give up and render the most recent page
-      - Search for the zero that best matches the previously-rendered page
-          - Either sum-of-differences or correlation
-      - Search constraints
-          - Start of next page should be after the end of current page
-          - If less than ~N pages are available, wait
-          - If many pages are available, constrain the search space to the most recent ~M pages
-  - Create a musical keyboard?
-      - ADSR style
-          - 3 states: ADS phase, Release phase, FastRelease phase
-              - FastRelease happens if you press a key during Release phase
-          - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
-              - Idea: Have the harmonics change their loudness randomly over time
-      - Abstract the keyboard from the (single note) synth
-          - Keyboard will re-construct the synth if it shuts off and key is pressed
-          - Don't bother adding more abstraction than that
-      - Controller ideas
-          - Control different synths with different parts of the keyboard
-          - Let you "slide" smoothly between notes (instead of letting you play multiple notes at once) by pressing one key while holding another
-          - Control a synth with the mouse (volume and pitch)
+    x Do something with pyaudio
+        x Output a simple sine wave using blocking mode
+        x Output a simple sine wave using a callback
+    x Potential Problem: Resizing the window blocks the main loop
+        x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
+    x Get some keyboard input
+        x Quit the program when 'Q' is pressed
+    x Fix the coordinates on Retina screens
+    x Create a threadsafe producer/consumer stream class
+        x Use a threading.Lock() to lock all operations
+        x Operations
+            x Produce new slice at right end
+            x Read any slice
+            x Keep up to N samples
+            x Get index of right/left end
+            x Get/set index variables
+            x Get timestamp of last write/set_index operation
+            x Get time span between index and writer
+            x PyAudio callbacks to read/write to PyAudio
+    - Refactor the sine wave to integrate with the GLFW flow
+        pa = pyaudio.PyAudio()
+        output_stream = pa.open(
+            output=True,
+            format=pyaudio.paInt16,
+            channels=1,
+            rate=SAMPLE_RATE,
+            frames_per_buffer=1024, # This is the default
+            stream_callback=callback,
+        )
+        output_stream.start_stream()
+
+        while output_stream.is_active():
+            time.sleep(0.01)
+
+        output_stream.stop_stream()
+        output_stream.close()
+        pa.terminate()
+    - Get some keyboard/mouse input
+        - Change pitch of the sine wave
+    - Write an oscilloscope app
+        - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
+            - If no zeros are available, give up and render the most recent page
+        - Search for the zero that best matches the previously-rendered page
+            - Either sum-of-differences or correlation
+        - Search constraints
+            - Start of next page should be after the end of current page
+            - If less than ~N pages are available, wait
+            - If many pages are available, constrain the search space to the most recent ~M pages
+    - Create a musical keyboard?
+        - ADSR style
+            - 3 states: ADS phase, Release phase, FastRelease phase
+                - FastRelease happens if you press a key during Release phase
+            - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
+                - Idea: Have the harmonics change their loudness randomly over time
+        - Abstract the keyboard from the (single note) synth
+            - Keyboard will re-construct the synth if it shuts off and key is pressed
+            - Don't bother adding more abstraction than that
+        - Controller ideas
+            - Control different synths with different parts of the keyboard
+            - Let you "slide" smoothly between notes (instead of letting you play multiple notes at once) by pressing one key while holding another
+            - Control a synth with the mouse (volume and pitch)
 '''
 
 import glfw
@@ -77,18 +94,38 @@ BYTES_PER_SAMPLE = 2
 
 def number_to_bytes(n):
     '''
-    Converts n to two bytes (as a signed short)
-    n can be an int or a float
-    Throws an exception unless MIN_SAMPLE <= n <= MAX_SAMPLE
+    Converts n to two bytes (as a signed short).
+    n can be an int or a float.
+    Throws an exception unless MIN_SAMPLE <= n <= MAX_SAMPLE.
     '''
     return struct.pack('<h', n)
 
 
 def bytes_to_number(b):
     '''
-    Converts two bytes (as a signed short) to an int
+    Converts two bytes (as a signed short) to an int.
     '''
     return struct.unpack('<h', b)[0]
+
+
+def number_list_to_bytes(number_list):
+    '''
+    Converts each number to two bytes (as a signed short).
+    Each number can be an int or a float.
+    Throws an exception unless MIN_SAMPLE <= number <= MAX_SAMPLE.
+    '''
+    return ''.join(number_to_bytes(n) for n in number_list)
+
+
+def bytes_to_number_list(byte_string):
+    '''
+    Converts each pair of two bytes (as a signed short) to an int.
+    '''
+    assert len(byte_string) % BYTES_PER_SAMPLE == 0
+    return [
+        bytes_to_number(byte_string[i : i + BYTES_PER_SAMPLE])
+        for i in range(0, len(byte_string), BYTES_PER_SAMPLE)
+    ]
 
 
 def play_audio_with_callback():
@@ -198,7 +235,7 @@ class ThreadsafeStream(object):
         self._last_extend_timestamp = time.time()
 
     def extend(self, new_slice):
-        ''' Produce a new slice at the right end '''
+        ''' Produce a new slice at the right end. '''
         with self._lock:
             self._list.extend(new_slice)
             self._last_extend_timestamp = time.time()
@@ -267,15 +304,46 @@ class ThreadsafeStream(object):
         with self._lock:
             return (self.right_index - self.get_index(index_name)) / float(sample_rate) + (self.get_index_timestamp(index_name) - self._last_extend_timestamp)
 
-    def pyaudio_input_callback(self, TODO):
-        ''' TODO '''
+    def pyaudio_input_callback(self,
+        in_data,      # Recorded data if input=True; else None
+        frame_count,  # Number of samples
+        time_info,    # Dictionary
+        status_flags  # PaCallbackFlags
+    ):
+        ''' Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample. '''
         with self._lock:
-            pass
+            if status_flags:
+                print 'Warning: status_flags is {} in pyaudio_input_callback()'.format(status_flags)
+            in_numbers = bytes_to_number_list(in_data)
+            assert len(in_numbers) == frame_count
+            self.extend(in_numbers)
+            return (None, pyaudio.paContinue)
 
-    def pyaudio_output_callback(self, TODO):
-        ''' TODO '''
+    def pyaudio_output_callback(self,
+        in_data,      # Recorded data if input=True; else None
+        frame_count,  # Number of samples
+        time_info,    # Dictionary
+        status_flags  # PaCallbackFlags
+    ):
+        ''' Assumes 1 channel and BYTES_PER_SAMPLE bytes per sample. '''
         with self._lock:
-            pass
+            if status_flags:
+                print 'Warning: status_flags is {} in pyaudio_output_callback()'.format(status_flags)
+            self.set_index_default('pyaudio_output', 0)
+            index = self.get_index('pyaudio_output')
+            if index < self.left_index:
+                index = self.left_index
+                print 'Warning: "pyaudio_output" index fell behind the window of remembered samples'
+            out_numbers = self[index : index + frame_count]
+            self.set_index('pyaudio_output', index + len(out_numbers))
+            assert self.left_index <= self.get_index('pyaudio_output') <= self.right_index
+            if len(out_numbers) < frame_count:
+                print 'Warning: only {} samples are available to output to PyAudio; {} were requested'.format(len(out_numbers), frame_count)
+                # Fill the gap with zeros
+                # (We must output at least frame_count samples. Output zeros if there aren't enough samples available in this ThreadsafeStream.)
+                out_numbers += [0] * (frame_count - len(out_numbers))
+            assert len(out_numbers) == frame_count
+            return (number_list_to_bytes(out_numbers), pyaudio.paContinue)
 
 
 class MyProgram(object):
