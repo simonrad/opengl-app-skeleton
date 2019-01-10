@@ -256,7 +256,7 @@ class ThreadsafeStream(object):
     def set_index_default(self, index_name, new_value_if_nonexistent):
         with self._lock:
             if index_name not in self._index_vars:
-                self._index_vars[index_name] = (new_value, time.time())
+                self._index_vars[index_name] = (new_value_if_nonexistent, time.time())
 
     def get_index(self, index_name):
         with self._lock:
@@ -445,6 +445,9 @@ def main():
 
         # Poll for and process events
         glfw.poll_events()
+
+        # Make output immediate even when stdout is a pipe
+        sys.stdout.flush()
 
     pa_output_stream.stop_stream()
     pa_output_stream.close()
