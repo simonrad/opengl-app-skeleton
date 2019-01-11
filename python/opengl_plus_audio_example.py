@@ -27,9 +27,9 @@ TODO:
             x Get timestamp of last write/set_index operation
             x Get time span between index and writer
             x PyAudio callbacks to read/write to PyAudio
-    - Refactor the sine wave to integrate with the GLFW flow
-    - Get some keyboard/mouse input
-        - Change pitch of the sine wave
+    x Refactor the sine wave to integrate with the GLFW flow
+    x Get some keyboard/mouse input
+        x Change pitch of the sine wave
     - Clean up the code
     - Write an oscilloscope app
         - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
@@ -345,6 +345,14 @@ class MyProgram(object):
         self.window = window
         self.output_stream = output_stream
         self.time_of_last_frame = time.time()
+        self.sine_freq = 440
+        glfw.set_key_callback(window, self.key_callback)
+
+    def key_callback(self, window, key, scancode, action, modifier_bits):
+        if key in (ord('I'), glfw.KEY_UP) and action == glfw.PRESS:
+            self.sine_freq *= 2 ** (1 / 12.)
+        if key in (ord('K'), glfw.KEY_DOWN) and action == glfw.PRESS:
+            self.sine_freq /= 2 ** (1 / 12.)
 
     def perform_frame(self):
         self.before_frame()
@@ -369,7 +377,7 @@ class MyProgram(object):
         print 'Need to generate {} samples'.format(num_samples_to_generate)
         new_chunk = [
             math.sin(
-                (float(t) / SAMPLE_RATE) * 2 * math.pi * 440
+                (float(t) / SAMPLE_RATE) * 2 * math.pi * self.sine_freq
             ) * MAX_SAMPLE
             for t in range(self.output_stream.right_index, self.output_stream.right_index + num_samples_to_generate)
         ]
