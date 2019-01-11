@@ -367,7 +367,13 @@ class MyProgram(object):
         print 'time_span is {:.4f}'.format(time_span)
         num_samples_to_generate = max(0, int((TARGET_TIME_SPAN - time_span) * SAMPLE_RATE))
         print 'Need to generate {} samples'.format(num_samples_to_generate)
-        # TODO
+        new_chunk = [
+            math.sin(
+                (float(t) / SAMPLE_RATE) * 2 * math.pi * 440
+            ) * MAX_SAMPLE
+            for t in range(self.output_stream.right_index, self.output_stream.right_index + num_samples_to_generate)
+        ]
+        self.output_stream.extend(new_chunk)
 
     def initialize_viewport(self):
         return # This function currently has no effect, since all these settings are the default settings
