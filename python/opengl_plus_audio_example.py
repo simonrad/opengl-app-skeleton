@@ -277,13 +277,19 @@ class ThreadsafeStream(object):
         with self._lock:
             return self._last_extend_timestamp
 
-    def get_time_span(self, index_name, sample_rate):
+    def get_time_span(self, index_name, sample_rate, assume_right_index_movement=True, assume_index_var_movement=True):
         '''
         Get time span (in seconds) between index and writer.
         Assumes that both indices move to the right at a rate of sample_rate list items per second.
         '''
         with self._lock:
-            return (self.right_index - self.get_index(index_name)) / float(sample_rate) + (self.get_index_timestamp(index_name) - self._last_extend_timestamp)
+            result = (self.right_index - self.get_index(index_name)) / float(sample_rate)
+            now = time.time()
+            if assume_right_index_movement:
+                result += now - self._last_extend_timestamp
+            if assume_index_var_movement:
+                result -= now - self.get_index_timestamp(index_name)
+            return result
 
     def pyaudio_input_callback(self,
         in_data,      # Recorded data if input=True; else None
@@ -357,8 +363,7 @@ class MyProgram(object):
 
     def perform_audio(self):
         self.output_stream.set_index_default('pyaudio_output', 0)
-        self.output_stream.extend([]) # Force last_extend_timestamp to be now
-        time_span = self.output_stream.get_time_span('pyaudio_output', SAMPLE_RATE)
+        time_span = self.output_stream.get_time_span('pyaudio_output', SAMPLE_RATE, assume_right_index_movement=False)
         print 'time_span is {:.4f}'.format(time_span)
         num_samples_to_generate = max(0, int((TARGET_TIME_SPAN - time_span) * SAMPLE_RATE))
         print 'Need to generate {} samples'.format(num_samples_to_generate)
