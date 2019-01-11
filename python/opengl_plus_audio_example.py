@@ -346,12 +346,13 @@ class MyProgram(object):
         self.output_stream = output_stream
         self.time_of_last_frame = time.time()
         self.sine_freq = 440
+        self.phase = 0.0
         glfw.set_key_callback(window, self.key_callback)
 
     def key_callback(self, window, key, scancode, action, modifier_bits):
-        if key in (ord('I'), glfw.KEY_UP) and action == glfw.PRESS:
+        if key in (ord('I'), glfw.KEY_UP) and action in (glfw.PRESS, glfw.REPEAT):
             self.sine_freq *= 2 ** (1 / 12.)
-        if key in (ord('K'), glfw.KEY_DOWN) and action == glfw.PRESS:
+        if key in (ord('K'), glfw.KEY_DOWN) and action in (glfw.PRESS, glfw.REPEAT):
             self.sine_freq /= 2 ** (1 / 12.)
 
     def perform_frame(self):
@@ -375,12 +376,13 @@ class MyProgram(object):
         print 'time_span is {:.4f}'.format(time_span)
         num_samples_to_generate = max(0, int((TARGET_TIME_SPAN - time_span) * SAMPLE_RATE))
         print 'Need to generate {} samples'.format(num_samples_to_generate)
-        new_chunk = [
-            math.sin(
-                (float(t) / SAMPLE_RATE) * 2 * math.pi * self.sine_freq
-            ) * MAX_SAMPLE
-            for t in range(self.output_stream.right_index, self.output_stream.right_index + num_samples_to_generate)
-        ]
+        new_chunk = []
+        for i in range(num_samples_to_generate):
+            new_chunk.append(
+                math.sin(self.phase) * MAX_SAMPLE
+            )
+            self.phase += 2 * math.pi * self.sine_freq / SAMPLE_RATE
+        self.phase %= 2 * math.pi
         self.output_stream.extend(new_chunk)
 
     def initialize_viewport(self):
