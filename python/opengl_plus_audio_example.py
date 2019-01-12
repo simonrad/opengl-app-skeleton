@@ -30,6 +30,25 @@ TODO:
     x Refactor the sine wave to integrate with the GLFW flow
     x Get some keyboard/mouse input
         x Change pitch of the sine wave
+    - Performance
+        x Try glfw.swap_interval(0)
+            - That worked! For the most part. FPS is now usually 600 but occasionally drops to 30.
+                - Not sure why the FPS occasionally drops, but seems related to swap_buffers()
+                    - Usually one of the OpenGL calls is slow, but sometimes it happens when all of them are fast
+                    - Turning off PyAudio had no effect
+                    - If I don't do swap_buffers(), the FPS never drops
+            - glfw.swap_interval(0) may lead to tearing
+            - So, best not to rely on swap_buffers() being fast
+        x Measure glFlush() time
+        x Try changing the OpenGL version
+        - Are performance improvements necessary?
+        - Remove the swap_buffers() call and see how responsive the audio can be
+        - Call swap_buffers() from another thread
+            - If I can't get swap_buffers() to be faster, at least this would let me process events with low latency
+            - Will require some work: A separate thread, condition variables, and separating MyProgram into rendering vs. non-rendering main methods
+        - Other ideas
+            - Check the FPS of the SIGIL app?
+            - Try fullscreen mode?
     - Clean up the code
     - Write an oscilloscope app
         - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
@@ -443,6 +462,10 @@ def main():
     window = glfw.create_window(640, 480, 'Hello World', None, None)
     assert window
     glfw.make_context_current(window)
+
+    # Passing 0 will turn off VSYNC so that swap_buffers() runs as fast as possible
+    # Passing 1 will turn on VSYNC to avoid tearing
+    glfw.swap_interval(0)
 
     # Initialize PyAudio
     pa = pyaudio.PyAudio()
