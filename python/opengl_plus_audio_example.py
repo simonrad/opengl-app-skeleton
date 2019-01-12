@@ -42,7 +42,8 @@ TODO:
         x Measure glFlush() time
         x Try changing the OpenGL version
         - Are performance improvements necessary?
-        - Remove the swap_buffers() call and see how responsive the audio can be
+        x Remove the swap_buffers() call and see how responsive the audio can be
+            - Even without swap_buffers(), the main thread sometimes gets blocked for up to 0.07 seconds
         - Call swap_buffers() from another thread
             - If I can't get swap_buffers() to be faster, at least this would let me process events with low latency
             - Will require some work: A separate thread, condition variables, and separating MyProgram into rendering vs. non-rendering main methods
