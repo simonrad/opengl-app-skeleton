@@ -30,7 +30,7 @@ TODO:
     x Refactor the sine wave to integrate with the GLFW flow
     x Get some keyboard/mouse input
         x Change pitch of the sine wave
-    - Performance
+    x Performance
         x Try glfw.swap_interval(0)
             - That worked! For the most part. FPS is now usually 600 but occasionally drops to 30.
                 - Not sure why the FPS occasionally drops, but seems related to swap_buffers()
@@ -44,12 +44,14 @@ TODO:
         - Are performance improvements necessary?
         x Remove the swap_buffers() call and see how responsive the audio can be
             - Even without swap_buffers(), the main thread sometimes gets blocked for up to 0.07 seconds
-        - Call swap_buffers() from another thread
+        x Call swap_buffers() from another thread
             - If I can't get swap_buffers() to be faster, at least this would let me process events with low latency
             - Will require some work: A separate thread, condition variables, and separating MyProgram into rendering vs. non-rendering main methods
+            - Results: The main loop is now almost never blocked for more than 0.006 seconds
         - Other ideas
             - Check the FPS of the SIGIL app?
             - Try fullscreen mode?
+    - Separate MyProgram into rendering vs. non-rendering main methods
     - Clean up the code
     - Write an oscilloscope app
         - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
@@ -359,6 +361,35 @@ class ThreadsafeStream(object):
             return (number_list_to_bytes(out_numbers), pyaudio.paContinue)
 
 
+class BufferSwapper(object):
+    '''
+    Performs glfw.swap_buffers(window) on a separate thread, and lets the main thread ask if it's finished.
+    '''
+    def __init__(self, window):
+        # Only the main thread will set() this Event to True
+        # Only self._thread will clear() this Event to False
+        self._is_swapping = threading.Event()
+
+        self._window = window
+
+        self._thread = threading.Thread(target=self._thread_procedure, name='Thread-BufferSwapper')
+        self._thread.daemon = True
+        self._thread.start()
+
+    def start_swapping_buffers(self):
+        self._is_swapping.set()
+
+    def is_done_swapping(self):
+        assert self._thread.is_alive()
+        return self._is_swapping.is_set() == False
+
+    def _thread_procedure(self):
+        while True:
+            self._is_swapping.wait()
+            glfw.swap_buffers(self._window)
+            self._is_swapping.clear()
+
+
 class MyProgram(object):
 
     def __init__(self, window, output_stream):
@@ -466,7 +497,7 @@ def main():
 
     # Passing 0 will turn off VSYNC so that swap_buffers() runs as fast as possible
     # Passing 1 will turn on VSYNC to avoid tearing
-    glfw.swap_interval(0)
+    glfw.swap_interval(1)
 
     # Initialize PyAudio
     pa = pyaudio.PyAudio()
@@ -487,14 +518,20 @@ def main():
 
     my_program = MyProgram(window, my_output_stream)
 
+    buffer_swapper = BufferSwapper(window)
+
     # Loop until the user closes the window
     while not glfw.window_should_close(window) and glfw.get_key(window, ord('Q')) != glfw.PRESS:
         assert pa_output_stream.is_active()
 
         my_program.perform_frame()
 
-        # Swap front and back buffers
-        glfw.swap_buffers(window)
+        # Start swapping front and back buffers
+        buffer_swapper.start_swapping_buffers()
+
+        while not buffer_swapper.is_done_swapping():
+            glfw.poll_events()
+            time.sleep(0.001)
 
         # Poll for and process events
         glfw.poll_events()
