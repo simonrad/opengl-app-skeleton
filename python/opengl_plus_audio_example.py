@@ -51,7 +51,7 @@ TODO:
         - Other ideas
             - Check the FPS of the SIGIL app?
             - Try fullscreen mode?
-    - Separate MyProgram into rendering vs. non-rendering main methods
+    x Separate MyProgram into rendering vs. non-rendering main methods
     - Clean up the code
     - Write an oscilloscope app
         - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
@@ -77,6 +77,7 @@ TODO:
             - Control a synth with the mouse (volume and pitch)
 '''
 
+import functools
 import glfw
 import math
 import OpenGL.GL as gl
@@ -89,10 +90,11 @@ import time
 
 # Audio constants
 SAMPLE_RATE = 44100
+TARGET_TIME_SPAN = 0.015
+PA_BUFFER_SIZE = 512
 MAX_SAMPLE = 2**15 - 1
 MIN_SAMPLE = -2**15
 BYTES_PER_SAMPLE = 2
-TARGET_TIME_SPAN = 0.05
 
 
 def number_to_bytes(n):
@@ -201,7 +203,7 @@ def play_audio_blocking():
     start_time = time.time()
     output_stream.write(data)
     elapsed_done_writing = time.time() - start_time
-    # print 'done writing audio. elapsed = {:.2f}'.format(time.time() - start_time)
+    ## print 'done writing audio. elapsed = {:.2f}'.format(time.time() - start_time)
 
     time.sleep(0.2)
     print 'write_available =', output_stream.get_write_available()
@@ -211,7 +213,7 @@ def play_audio_blocking():
     pa.terminate()
 
     elapsed_done_playing = time.time() - start_time
-    # print 'done playing audio. elapsed = {:.2f}'.format(time.time() - start_time)
+    ## print 'done playing audio. elapsed = {:.2f}'.format(time.time() - start_time)
 
     print 'elapsed_done_writing = {:.2f}'.format(elapsed_done_writing)
     print 'elapsed_done_playing = {:.2f}'.format(elapsed_done_playing)
@@ -390,15 +392,36 @@ class BufferSwapper(object):
             self._is_swapping.clear()
 
 
+def print_elapsed_time_between_calls(elapsed_threshold = 0):
+    def decorator(wrapped_func):
+        time_of_last_call = [time.time()]
+
+        @functools.wraps(wrapped_func)
+        def new_func(*args, **kwargs):
+            now = time.time()
+            elapsed = now - time_of_last_call[0]
+            freq = 1 / elapsed
+            if elapsed > elapsed_threshold:
+                print '{}: {:.4f} seconds elapsed between calls. freq = {:.1f} hz'.format(wrapped_func.__name__, elapsed, freq)
+            time_of_last_call[0] = now
+            return wrapped_func(*args, **kwargs)
+
+        return new_func
+
+    return decorator
+
+
 class MyProgram(object):
 
     def __init__(self, window, output_stream):
         self.window = window
         self.output_stream = output_stream
-        self.time_of_last_frame = time.time()
         self.sine_freq = 440
         self.phase = 0.0
+
         glfw.set_key_callback(window, self._key_callback)
+        self._initialize_viewport()
+        self._initialize_opengl()
 
     def _key_callback(self, window, key, scancode, action, modifier_bits):
         if key in (ord('I'), glfw.KEY_UP) and action in (glfw.PRESS, glfw.REPEAT):
@@ -406,27 +429,21 @@ class MyProgram(object):
         if key in (ord('K'), glfw.KEY_DOWN) and action in (glfw.PRESS, glfw.REPEAT):
             self.sine_freq /= 2 ** (1 / 12.)
 
-    def perform_frame(self):
-        self._before_frame()
+    @print_elapsed_time_between_calls(elapsed_threshold = 0.006)
+    def between_frames(self):
         self._perform_audio()
-        self._initialize_viewport() # Note: This could be called just once at startup, instead
-        self._initialize_opengl()   # Note: This could be called just once at startup, instead
-        self._render()
 
-    def _before_frame(self):
-        now = time.time()
-        elapsed = now - self.time_of_last_frame
-        fps = 1 / elapsed
+    @print_elapsed_time_between_calls()
+    def render_frame(self):
+        self._render()
         print
-        print '{:.3f} seconds elapsed between frames. FPS = {:.1f}'.format(elapsed, fps)
-        self.time_of_last_frame = now
 
     def _perform_audio(self):
         self.output_stream.set_index_default('pyaudio_output', 0)
         time_span = self.output_stream.get_time_span('pyaudio_output', SAMPLE_RATE, assume_right_index_movement=False)
-        print 'time_span is {:.4f}'.format(time_span)
+        ## print 'time_span is {:.4f}'.format(time_span)
         num_samples_to_generate = max(0, int((TARGET_TIME_SPAN - time_span) * SAMPLE_RATE))
-        print 'Need to generate {} samples'.format(num_samples_to_generate)
+        ## print 'Need to generate {} samples'.format(num_samples_to_generate)
         new_chunk = []
         for i in range(num_samples_to_generate):
             new_chunk.append(
@@ -488,9 +505,10 @@ class MyProgram(object):
 
 def main():
     # Initialize GLFW
+    # --------------------------------------------------
     assert glfw.init()
 
-    # Create a windowed mode window and its OpenGL context
+    # Create a window and its OpenGL context
     window = glfw.create_window(640, 480, 'Hello World', None, None)
     assert window
     glfw.make_context_current(window)
@@ -499,7 +517,9 @@ def main():
     # Passing 1 will turn on VSYNC to avoid tearing
     glfw.swap_interval(1)
 
+
     # Initialize PyAudio
+    # --------------------------------------------------
     pa = pyaudio.PyAudio()
 
     # Create a ThreadsafeStream object to be the pipe between the PyAudio callback thread and our main loop/thread
@@ -511,39 +531,53 @@ def main():
         format=pyaudio.paInt16,
         channels=1,
         rate=SAMPLE_RATE,
-        frames_per_buffer=1024, # This is the default
+        frames_per_buffer=PA_BUFFER_SIZE, # 1024 is the default
         stream_callback=my_output_stream.pyaudio_output_callback,
     )
-    pa_output_stream.start_stream()
 
+    all_pa_streams = [pa_output_stream]
+
+    for stream in all_pa_streams:
+        stream.start_stream()
+
+
+    # Main loop
+    # --------------------------------------------------
     my_program = MyProgram(window, my_output_stream)
 
     buffer_swapper = BufferSwapper(window)
 
     # Loop until the user closes the window
     while not glfw.window_should_close(window) and glfw.get_key(window, ord('Q')) != glfw.PRESS:
-        assert pa_output_stream.is_active()
+        for stream in all_pa_streams:
+            assert stream.is_active()
 
-        my_program.perform_frame()
+        my_program.render_frame()
 
         # Start swapping front and back buffers
         buffer_swapper.start_swapping_buffers()
 
         while not buffer_swapper.is_done_swapping():
-            glfw.poll_events()
+            glfw.poll_events() # Poll for and process events
+            my_program.between_frames()
             time.sleep(0.001)
 
-        # Poll for and process events
-        glfw.poll_events()
+        glfw.poll_events() # Poll for and process events
+        my_program.between_frames()
 
         # Make output immediate even when stdout is a pipe
         sys.stdout.flush()
 
-    pa_output_stream.stop_stream()
-    pa_output_stream.close()
+
+    # Terminate GLFW and PyAudio
+    # --------------------------------------------------
+    for stream in all_pa_streams:
+        stream.stop_stream()
+        stream.close()
     pa.terminate()
 
     glfw.terminate()
+
 
     print 'Goodbye!'
 
