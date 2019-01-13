@@ -92,7 +92,7 @@ class ThreadsafeStream(object):
                 end = max(0, end - self._start_index)
             return self._list[begin : end]
 
-    def __len__(self, yyy):
+    def __len__(self):
         with self._lock:
             return len(self._list)
 
