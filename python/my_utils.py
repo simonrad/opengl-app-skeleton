@@ -2,6 +2,7 @@
 Utility functions and classes, mostly having to do with PyAudio and GLFW.
 '''
 
+import contextlib
 import functools
 import glfw
 import pyaudio
@@ -256,3 +257,11 @@ def print_elapsed_time_between_calls(elapsed_threshold=0, seconds_between_report
         return new_func
 
     return decorator
+
+
+@contextlib.contextmanager
+def timed(name):
+    start_time = time.time()
+    yield
+    elapsed = time.time() - start_time
+    print '{} took {:.5f} seconds'.format(name, elapsed)
