@@ -66,7 +66,7 @@ class ThreadsafeStream(object):
     able to read index 0 of the stream.
     '''
 
-    def __init__(self, max_size=TYPICAL_SAMPLE_RATE * 5):
+    def __init__(self, max_size = TYPICAL_SAMPLE_RATE * 5):
         self._lock = threading.RLock()
         self._max_size = max_size
         self._list = []
@@ -227,18 +227,30 @@ class BufferSwapper(object):
             self._is_swapping.clear()
 
 
-def print_elapsed_time_between_calls(elapsed_threshold = 0):
+def print_elapsed_time_between_calls(elapsed_threshold=0, seconds_between_reports=2.0):
     def decorator(wrapped_func):
-        time_of_last_call = [time.time()]
+        call_times = [time.time()]
 
         @functools.wraps(wrapped_func)
         def new_func(*args, **kwargs):
             now = time.time()
-            elapsed = now - time_of_last_call[0]
+            elapsed = now - call_times[-1]
             freq = 1 / elapsed
-            if elapsed > elapsed_threshold:
-                print '{}: {:.4f} seconds elapsed between calls. freq = {:.1f} hz'.format(wrapped_func.__name__, elapsed, freq)
-            time_of_last_call[0] = now
+            if elapsed_threshold is not None and elapsed > elapsed_threshold:
+                print '{}: {:.4f} seconds elapsed between calls. Freq = {:.1f} hz'.format(wrapped_func.__name__, elapsed, freq)
+            call_times.append(now)
+
+            if seconds_between_reports is None:
+                call_times[:] = call_times[-1:]
+            elif call_times[-1] - call_times[0] > seconds_between_reports:
+                avg_elapsed = (call_times[-1] - call_times[0]) / (len(call_times) - 1)
+                avg_freq = 1 / avg_elapsed
+                elapsed_intervals = [call_times[i] - call_times[i - 1] for i in range(1, len(call_times))]
+                print '{}: {:.4f} seconds between calls on average. Max = {:.4f}. Min = {:.4f}. Average freq = {:.1f} hz'.format(
+                    wrapped_func.__name__, avg_elapsed, max(elapsed_intervals), min(elapsed_intervals), avg_freq
+                )
+                call_times[:] = call_times[-1:]
+
             return wrapped_func(*args, **kwargs)
 
         return new_func

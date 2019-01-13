@@ -52,11 +52,11 @@ class MyProgram(object):
             self.sine_freq /= 2 ** (1 / 12.)
             print 'The sine frequency is now {:.1f}'.format(self.sine_freq)
 
-    @my_utils.print_elapsed_time_between_calls(elapsed_threshold = 0.006)
+    @my_utils.print_elapsed_time_between_calls(elapsed_threshold=0.006)
     def between_frames(self):
         self._perform_audio()
 
-    ## @my_utils.print_elapsed_time_between_calls()
+    @my_utils.print_elapsed_time_between_calls(elapsed_threshold=None)
     def render_frame(self):
         self._render()
 
