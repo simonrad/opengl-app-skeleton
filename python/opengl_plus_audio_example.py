@@ -2,81 +2,11 @@
 
 '''
 Some simple 2D graphics with glfw and PyOpenGL, and sound with pyaudio.
-
 This example outputs a sine wave sound, whose frequency can be controlled with the up/down arrow keys.
 
 Install dependencies with:
     brew install glfw portaudio
     pip install glfw pyaudio PyOpenGL PyOpenGL_accelerate
-
-TODO:
-    x Do something with pyaudio
-        x Output a simple sine wave using blocking mode
-        x Output a simple sine wave using a callback
-    x Potential Problem: Resizing the window blocks the main loop
-        x Should be OK. Just output zeros to PyAudio when the main loop isn't keeping up
-    x Get some keyboard input
-        x Quit the program when 'Q' is pressed
-    x Fix the coordinates on Retina screens
-    x Create a threadsafe producer/consumer stream class
-        x Use a threading.Lock() to lock all operations
-        x Operations
-            x Produce new slice at right end
-            x Read any slice
-            x Keep up to N samples
-            x Get index of right/left end
-            x Get/set index variables
-            x Get timestamp of last write/set_index operation
-            x Get time span between index and writer
-            x PyAudio callbacks to read/write to PyAudio
-    x Refactor the sine wave to integrate with the GLFW flow
-    x Get some keyboard/mouse input
-        x Change pitch of the sine wave
-    x Performance
-        x Try glfw.swap_interval(0)
-            - That worked! For the most part. FPS is now usually 600 but occasionally drops to 30.
-                - Not sure why the FPS occasionally drops, but seems related to swap_buffers()
-                    - Usually one of the OpenGL calls is slow, but sometimes it happens when all of them are fast
-                    - Turning off PyAudio had no effect
-                    - If I don't do swap_buffers(), the FPS never drops
-            - glfw.swap_interval(0) may lead to tearing
-            - So, best not to rely on swap_buffers() being fast
-        x Measure glFlush() time
-        x Try changing the OpenGL version
-        - Are performance improvements necessary?
-        x Remove the swap_buffers() call and see how responsive the audio can be
-            - Even without swap_buffers(), the main thread sometimes gets blocked for up to 0.07 seconds
-        x Call swap_buffers() from another thread
-            - If I can't get swap_buffers() to be faster, at least this would let me process events with low latency
-            - Will require some work: A separate thread, condition variables, and separating MyProgram into rendering vs. non-rendering main methods
-            - Results: The main loop is now almost never blocked for more than 0.006 seconds
-        - Other ideas
-            - Check the FPS of the SIGIL app?
-            - Try fullscreen mode?
-    x Separate MyProgram into rendering vs. non-rendering main methods
-    - Clean up the code
-    - Write an oscilloscope app
-        - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
-            - If no zeros are available, give up and render the most recent page
-        - Search for the zero that best matches the previously-rendered page
-            - Either sum-of-differences or correlation
-        - Search constraints
-            - Start of next page should be after the end of current page
-            - If less than ~N pages are available, wait
-            - If many pages are available, constrain the search space to the most recent ~M pages
-    - Create a musical keyboard?
-        - ADSR style
-            - 3 states: ADS phase, Release phase, FastRelease phase
-                - FastRelease happens if you press a key during Release phase
-            - Have many harmonics. Upper harmonics start out louder (and random loudness), then decay to normal
-                - Idea: Have the harmonics change their loudness randomly over time
-        - Abstract the keyboard from the (single note) synth
-            - Keyboard will re-construct the synth if it shuts off and key is pressed
-            - Don't bother adding more abstraction than that
-        - Controller ideas
-            - Control different synths with different parts of the keyboard
-            - Let you "slide" smoothly between notes (instead of letting you play multiple notes at once) by pressing one key while holding another
-            - Control a synth with the mouse (volume and pitch)
 '''
 
 import glfw

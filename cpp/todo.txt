@@ -1,5 +1,3 @@
 TODO:
 
 - Build and run a SIGIL+PortAudio combo
-
-- Create a separate repo for the actual app
