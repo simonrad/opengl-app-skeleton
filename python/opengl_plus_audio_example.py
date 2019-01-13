@@ -398,22 +398,22 @@ class MyProgram(object):
         self.time_of_last_frame = time.time()
         self.sine_freq = 440
         self.phase = 0.0
-        glfw.set_key_callback(window, self.key_callback)
+        glfw.set_key_callback(window, self._key_callback)
 
-    def key_callback(self, window, key, scancode, action, modifier_bits):
+    def _key_callback(self, window, key, scancode, action, modifier_bits):
         if key in (ord('I'), glfw.KEY_UP) and action in (glfw.PRESS, glfw.REPEAT):
             self.sine_freq *= 2 ** (1 / 12.)
         if key in (ord('K'), glfw.KEY_DOWN) and action in (glfw.PRESS, glfw.REPEAT):
             self.sine_freq /= 2 ** (1 / 12.)
 
     def perform_frame(self):
-        self.before_frame()
-        self.perform_audio()
-        self.initialize_viewport() # Note: This could be called just once at startup, instead
-        self.initialize_opengl()   # Note: This could be called just once at startup, instead
-        self.render()
+        self._before_frame()
+        self._perform_audio()
+        self._initialize_viewport() # Note: This could be called just once at startup, instead
+        self._initialize_opengl()   # Note: This could be called just once at startup, instead
+        self._render()
 
-    def before_frame(self):
+    def _before_frame(self):
         now = time.time()
         elapsed = now - self.time_of_last_frame
         fps = 1 / elapsed
@@ -421,7 +421,7 @@ class MyProgram(object):
         print '{:.3f} seconds elapsed between frames. FPS = {:.1f}'.format(elapsed, fps)
         self.time_of_last_frame = now
 
-    def perform_audio(self):
+    def _perform_audio(self):
         self.output_stream.set_index_default('pyaudio_output', 0)
         time_span = self.output_stream.get_time_span('pyaudio_output', SAMPLE_RATE, assume_right_index_movement=False)
         print 'time_span is {:.4f}'.format(time_span)
@@ -436,7 +436,7 @@ class MyProgram(object):
         self.phase %= 2 * math.pi
         self.output_stream.extend(new_chunk)
 
-    def initialize_viewport(self):
+    def _initialize_viewport(self):
         return # This function currently has no effect, since all these settings are the default settings
 
         # Note: On Retina screens, pixel_w is 2x greater than window_w
@@ -454,7 +454,7 @@ class MyProgram(object):
         # The top-right window corner's OpenGL coordinates are (+1, +1)
         gl.glOrtho(-1, 1, -1, 1, -1, 1)
 
-    def initialize_opengl(self):
+    def _initialize_opengl(self):
         # Turn on antialiasing
         gl.glEnable(gl.GL_LINE_SMOOTH)
         gl.glEnable(gl.GL_POLYGON_SMOOTH)
@@ -463,7 +463,7 @@ class MyProgram(object):
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
 
-    def render(self):
+    def _render(self):
         # Clear the buffer
         gl.glClearColor(0.1, 0.1, 0.1, 0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
