@@ -21,8 +21,15 @@ import my_utils
 
 # Audio constants
 SAMPLE_RATE = 44100
+PA_BUFFER_SIZE = 512 # Smaller value -> lower latency
+
+# This is the targeted amount of buffer (in seconds) between the producer (MyProgram) and the consumer (PyAudio) of the ThreadsafeStream.
+# Smaller values keep the latency low (e.g. so that when you press up or down you hear the effect immediately).
+# But if the value is too small then the main loop (MyProgram._perform_audio()) may not replenish the ThreadsafeStream fast enough, leading to drops in audio.
+# An alternative architecture would be to have the PyAudio callback (which runs on a separate thread) generate audio on demand,
+# and the main thread (which is the only thread that can process GLFW input) simply sends keyboard/mouse input signals to a threadsafe object that the PyAudio callback can read from.
+# The current architecture lets you do almost everything from a single thread (the main thread).
 TARGET_TIME_SPAN = 0.015
-PA_BUFFER_SIZE = 512
 
 
 class MyProgram(object):
