@@ -30,6 +30,8 @@ x Performance of glfw.swap_buffers()
 x Separate MyProgram into rendering vs. non-rendering main methods
 x Clean up the code
 
+- Fix the performance issues with ThreadsafeStream
+
 - Write an oscilloscope app
     - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
         - If no zeros are available, give up and render the most recent page

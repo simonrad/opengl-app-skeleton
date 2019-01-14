@@ -61,41 +61,48 @@ class ThreadsafeStream(object):
         - extend()
         - __getslice__();  i.e. threadsafe_stream[10:20]
 
-    When the length of the internal list becomes larger than max_size, the left
-    side of the list is trimmed to make the list exactly max_size in length.
+    When the length of the list becomes larger than max_size, the left side of
+    the list is trimmed to make the list exactly max_size in length.
     The indices are preserved, however. So for example you will no longer be
     able to read index 0 of the stream.
     '''
 
     def __init__(self, max_size = TYPICAL_SAMPLE_RATE * 5):
+        assert int(max_size) > 0
         self._lock = threading.RLock()
-        self._max_size = max_size
-        self._list = []
-        self._start_index = 0
+        self._list = [None] * int(max_size) # Circular array
+        self._right_index = 0 # External index that users of this class see; actually 1 past the end
         self._index_vars = {} # Map from index_name to (index, last_updated_timestamp)
         self._last_extend_timestamp = time.time()
 
     def extend(self, new_slice):
         ''' Produce a new slice at the right end. '''
         with self._lock:
-            self._list.extend(new_slice)
+            for value in new_slice:
+                self._list[self._right_index % len(self._list)] = value
+                self._right_index += 1
             self._last_extend_timestamp = time.time()
-            num_to_delete = len(self._list) - self._max_size
-            if num_to_delete > 0:
-                del self._list[0 : num_to_delete]
-                self._start_index += num_to_delete
 
     def __getslice__(self, begin, end):
+        assert isinstance(begin, (int, long))
+        assert isinstance(end,   (int, long))
         with self._lock:
-            if 0 <= begin < sys.maxint:
-                begin = max(0, begin - self._start_index)
-            if 0 <= end < sys.maxint:
-                end = max(0, end - self._start_index)
-            return self._list[begin : end]
+            if begin < 0:
+                begin = self._right_index + begin
+            if end < 0:
+                end = self._right_index + end
+            begin = max(begin, self.left_index)
+            end   = max(end,   self.left_index)
+            begin = min(begin, self._right_index)
+            end   = min(end,   self._right_index)
+            return [
+                self._list[i % len(self._list)]
+                for i in range(begin, end)
+            ]
 
     def __len__(self):
         with self._lock:
-            return len(self._list)
+            return min(self._right_index, len(self._list))
 
     @property
     def lock(self):
@@ -104,12 +111,12 @@ class ThreadsafeStream(object):
     @property
     def left_index(self):
         with self._lock:
-            return self._start_index
+            return max(0, self._right_index - len(self._list))
 
     @property
     def right_index(self):
         with self._lock:
-            return self._start_index + len(self._list)
+            return self._right_index
 
     def set_index(self, index_name, new_value):
         with self._lock:
@@ -143,7 +150,7 @@ class ThreadsafeStream(object):
         Assumes that both indices move to the right at a rate of sample_rate list items per second.
         '''
         with self._lock:
-            result = (self.right_index - self.get_index(index_name)) / float(sample_rate)
+            result = (self._right_index - self.get_index(index_name)) / float(sample_rate)
             now = time.time()
             if assume_right_index_movement:
                 result += now - self._last_extend_timestamp
@@ -189,7 +196,7 @@ class ThreadsafeStream(object):
                 print 'Warning: "pyaudio_output" index fell behind the window of remembered samples'
             out_numbers = self[index : index + frame_count]
             self.set_index('pyaudio_output', index + len(out_numbers))
-            assert self.left_index <= self.get_index('pyaudio_output') <= self.right_index
+            assert self.left_index <= self.get_index('pyaudio_output') <= self._right_index
             if len(out_numbers) < frame_count:
                 print 'Warning: only {} samples are available to output to PyAudio; {} were requested'.format(len(out_numbers), frame_count)
                 # Fill the gap with zeros
