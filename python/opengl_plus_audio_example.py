@@ -52,7 +52,7 @@ class MyProgram(object):
             self.sine_freq /= 2 ** (1 / 12.)
             print 'The sine frequency is now {:.1f}'.format(self.sine_freq)
 
-    @my_utils.print_elapsed_time_between_calls(elapsed_threshold=0.006)
+    @my_utils.print_elapsed_time_between_calls(elapsed_threshold=0.01)
     def between_frames(self):
         self._perform_audio()
 
@@ -123,6 +123,27 @@ class MyProgram(object):
         gl.glVertex3f(+.95, +.95, 0)
 
         gl.glEnd()
+
+    def _render_oscilloscope(self):
+
+        NUM_SAMPLES_TO_DISPLAY = 400
+
+        # Clear the buffer
+        gl.glClearColor(0.1, 0.1, 0.1, 0)
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+
+        gl.glColor3f(1, 1, 0) # Yellow
+
+        # Draw the oscilloscope
+        if len(self.output_stream) > NUM_SAMPLES_TO_DISPLAY:
+            gl.glBegin(gl.GL_LINE_STRIP)
+
+            for i, sample in enumerate(self.output_stream.get_slice(-NUM_SAMPLES_TO_DISPLAY)):
+                x = 2 * i / float(NUM_SAMPLES_TO_DISPLAY - 1) - 1
+                y = sample / float(my_utils.MAX_SAMPLE)
+                gl.glVertex3f(x, y, 0.0)
+
+            gl.glEnd()
 
 
 def main():
