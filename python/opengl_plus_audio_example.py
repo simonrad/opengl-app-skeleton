@@ -58,7 +58,10 @@ class MyProgram(object):
 
     @my_utils.print_elapsed_time_between_calls(elapsed_threshold=None)
     def render_frame(self):
-        self._render()
+        if glfw.get_key(self.window, ord(' ')) == glfw.PRESS:
+            self._render_oscilloscope()
+        else:
+            self._render()
 
     def _perform_audio(self):
         self.output_stream.set_index_default('pyaudio_output', 0)
