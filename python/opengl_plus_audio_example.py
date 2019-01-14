@@ -111,16 +111,16 @@ class MyProgram(object):
         gl.glBegin(gl.GL_LINE_STRIP)
 
         gl.glColor3f(1, 0, 0)
-        gl.glVertex3fv((-.95, -.95, 0))
+        gl.glVertex3f(-.95, -.95, 0)
 
         gl.glColor3f(0, 1, 0)
-        gl.glVertex3fv((-.95, +.95, 0))
+        gl.glVertex3f(-.95, +.95, 0)
 
         gl.glColor3f(0, 0, 1)
-        gl.glVertex3fv((+.95, -.95, 0))
+        gl.glVertex3f(+.95, -.95, 0)
 
         gl.glColor3f(1, 1, 0) # Yellow
-        gl.glVertex3fv((+.95, +.95, 0))
+        gl.glVertex3f(+.95, +.95, 0)
 
         gl.glEnd()
 
