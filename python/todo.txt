@@ -29,8 +29,7 @@ x Performance of glfw.swap_buffers()
         - Results: The main loop is now almost never blocked for more than 0.006 seconds
 x Separate MyProgram into rendering vs. non-rendering main methods
 x Clean up the code
-
-- Fix the performance issues with ThreadsafeStream
+x Fix the performance issues with ThreadsafeStream (it was actually a bug)
 
 - Write an oscilloscope app
     - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)

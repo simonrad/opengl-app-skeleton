@@ -59,7 +59,7 @@ class ThreadsafeStream(object):
     '''
     A threadsafe object representing a list supporting 2 main operations:
         - extend()
-        - __getslice__();  i.e. threadsafe_stream[10:20]
+        - get_slice();  like threadsafe_stream[10:20]
 
     When the length of the list becomes larger than max_size, the left side of
     the list is trimmed to make the list exactly max_size in length.
@@ -83,7 +83,7 @@ class ThreadsafeStream(object):
                 self._right_index += 1
             self._last_extend_timestamp = time.time()
 
-    def __getslice__(self, begin, end):
+    def get_slice(self, begin=0, end=sys.maxint):
         assert isinstance(begin, (int, long))
         assert isinstance(end,   (int, long))
         with self._lock:
@@ -194,7 +194,7 @@ class ThreadsafeStream(object):
             if index < self.left_index:
                 index = self.left_index
                 print 'Warning: "pyaudio_output" index fell behind the window of remembered samples'
-            out_numbers = self[index : index + frame_count]
+            out_numbers = self.get_slice(index, index + frame_count)
             self.set_index('pyaudio_output', index + len(out_numbers))
             assert self.left_index <= self.get_index('pyaudio_output') <= self._right_index
             if len(out_numbers) < frame_count:
