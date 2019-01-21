@@ -13,6 +13,7 @@ import glfw
 import math
 import OpenGL.GL as gl
 import pyaudio
+import random
 import sys
 import time
 
@@ -150,7 +151,6 @@ class MyProgram(object):
         Returns the index in search_window_data (list index, not stream index)
         that is the start of the page that best matches self.last_rendered_data.
         '''
-        num_samples_to_compare = min(self.num_samples_to_render, len(self.last_rendered_data))
 
         # Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
         possible_start_indices = [
@@ -162,11 +162,34 @@ class MyProgram(object):
         if not possible_start_indices:
             return len(search_window_data) - self.num_samples_to_render
 
-        # TODO
+        MAX_INDICES_TO_TEST = 500
+        if len(possible_start_indices) > MAX_INDICES_TO_TEST:
+            print 'Warning: {} zeros found. Randomly choosing only {} of them to test'.format(len(possible_start_indices), MAX_INDICES_TO_TEST)
+            possible_start_indices = random.sample(possible_start_indices, MAX_INDICES_TO_TEST)
 
         # Search for the zero that best matches the previously-rendered page
-        #     Either sum-of-differences or correlation
+        # Note that this is potentially one of the slowest parts of the application
+        scores = [
+            self._compute_score(search_window_data, candidate_start)
+            for candidate_start in possible_start_indices
+        ]
+        ## print 'possible_start_indices = {!r}'.format(possible_start_indices)
+        ## print 'scores = {!r}'.format(scores)
+        return min(zip(scores, possible_start_indices))[1]
 
+    def _compute_score(self, search_window_data, start_index):
+        '''
+        Compares self.last_rendered_data to search_window_data[start_index : start_index + num_samples_to_compare].
+        Returns a difference score. A lower score is better.
+        '''
+        num_samples_to_compare = min(self.num_samples_to_render, len(self.last_rendered_data))
+
+        # This is sum-of-differences
+        # TODO: Try correlation?
+        return sum(
+            abs(self.last_rendered_data[i] - search_window_data[start_index + i])
+            for i in range(0, num_samples_to_compare)
+        )
 
     def _render_oscilloscope(self):
 
