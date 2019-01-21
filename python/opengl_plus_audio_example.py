@@ -152,9 +152,21 @@ class MyProgram(object):
         '''
         num_samples_to_compare = min(self.num_samples_to_render, len(self.last_rendered_data))
 
-        # TODO
-        if True: # No zeros found
+        # Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
+        possible_start_indices = [
+            i for i in range(0, len(search_window_data) - self.num_samples_to_render + 1)
+            if search_window_data[i] < 0 and search_window_data[i + 1] >= 0
+        ]
+
+        # If no zeros are available, give up and render the most recent possible page
+        if not possible_start_indices:
             return len(search_window_data) - self.num_samples_to_render
+
+        # TODO
+
+        # Search for the zero that best matches the previously-rendered page
+        #     Either sum-of-differences or correlation
+
 
     def _render_oscilloscope(self):
 
