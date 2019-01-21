@@ -40,6 +40,17 @@ class MyProgram(object):
         self.sine_freq = 440
         self.phase = 0.0
 
+        self.num_samples_to_render = 400
+        # Start of next page should be after the start of current page + self.min_samples_to_advance
+        self.min_samples_to_advance = 400
+        # Start of next page should be after the most recent audio index - self.max_rendering_latency_samples - self.num_samples_to_render
+        self.max_rendering_latency_samples = 400 * 10
+        # If less than self.min_search_space_samples are available, wait
+        self.min_search_space_samples = 400 * 5
+
+        self.last_rendered_start_index = 0
+        self.last_rendered_data = [0] * self.num_samples_to_render
+
         glfw.set_key_callback(window, self._key_callback)
         self._initialize_viewport()
         self._initialize_opengl()
@@ -58,10 +69,8 @@ class MyProgram(object):
 
     @my_utils.print_elapsed_time_between_calls(elapsed_threshold=None)
     def render_frame(self):
-        if glfw.get_key(self.window, ord(' ')) == glfw.PRESS:
-            self._render_oscilloscope()
-        else:
-            self._render()
+        self._choose_samples_to_render()
+        self._render_oscilloscope()
 
     def _perform_audio(self):
         self.output_stream.set_index_default('pyaudio_output', 0)
@@ -105,31 +114,49 @@ class MyProgram(object):
         gl.glEnable(gl.GL_BLEND)
         gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
 
-    def _render(self):
-        # Clear the buffer
-        gl.glClearColor(0.1, 0.1, 0.1, 0)
-        gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+    def _choose_samples_to_render(self):
+        '''
+        Updates the following two member vars:
+            self.last_rendered_start_index
+            self.last_rendered_data
+        '''
+        assert self.max_rendering_latency_samples > self.min_search_space_samples
 
-        # Draw some points
-        gl.glBegin(gl.GL_LINE_STRIP)
+        max_index = self.output_stream.right_index - self.num_samples_to_render
+        min_index = max(
+            max_index - self.max_rendering_latency_samples,
+            self.last_rendered_start_index + self.min_samples_to_advance,
+        )
 
-        gl.glColor3f(1, 0, 0)
-        gl.glVertex3f(-.95, -.95, 0)
+        if (max_index - min_index) < self.min_search_space_samples:
+            return # No change to what is rendered; wait for more samples
 
-        gl.glColor3f(0, 1, 0)
-        gl.glVertex3f(-.95, +.95, 0)
+        search_window_data = self.output_stream.get_slice(min_index)
+        best_window_offset = self._find_best_match(search_window_data)
+        assert self.output_stream.left_index <= min_index
 
-        gl.glColor3f(0, 0, 1)
-        gl.glVertex3f(+.95, -.95, 0)
+        self.last_rendered_start_index = min_index + best_window_offset
+        self.last_rendered_data = search_window_data[best_window_offset : best_window_offset + self.num_samples_to_render]
+        assert len(self.last_rendered_data) == self.num_samples_to_render
+        self._rendering_updated()
 
-        gl.glColor3f(1, 1, 0) # Yellow
-        gl.glVertex3f(+.95, +.95, 0)
+    @my_utils.print_elapsed_time_between_calls(elapsed_threshold=None)
+    def _rendering_updated(self):
+        ''' Just a dummy function that's called when the self.last_rendered_data is changed. '''
+        pass
 
-        gl.glEnd()
+    def _find_best_match(self, search_window_data):
+        '''
+        Returns the index in search_window_data (list index, not stream index)
+        that is the start of the page that best matches self.last_rendered_data.
+        '''
+        num_samples_to_compare = min(self.num_samples_to_render, len(self.last_rendered_data))
+
+        # TODO
+        if True: # No zeros found
+            return len(search_window_data) - self.num_samples_to_render
 
     def _render_oscilloscope(self):
-
-        NUM_SAMPLES_TO_DISPLAY = 400
 
         # Clear the buffer
         gl.glClearColor(0.1, 0.1, 0.1, 0)
@@ -138,15 +165,14 @@ class MyProgram(object):
         gl.glColor3f(1, 1, 0) # Yellow
 
         # Draw the oscilloscope
-        if len(self.output_stream) > NUM_SAMPLES_TO_DISPLAY:
-            gl.glBegin(gl.GL_LINE_STRIP)
+        gl.glBegin(gl.GL_LINE_STRIP)
 
-            for i, sample in enumerate(self.output_stream.get_slice(-NUM_SAMPLES_TO_DISPLAY)):
-                x = 2 * i / float(NUM_SAMPLES_TO_DISPLAY - 1) - 1
-                y = sample / float(my_utils.MAX_SAMPLE)
-                gl.glVertex3f(x, y, 0.0)
+        for i, sample in enumerate(self.last_rendered_data):
+            x = 2 * i / float(len(self.last_rendered_data) - 1) - 1
+            y = sample / float(my_utils.MAX_SAMPLE)
+            gl.glVertex3f(x, y, 0.0)
 
-            gl.glEnd()
+        gl.glEnd()
 
 
 def main():
