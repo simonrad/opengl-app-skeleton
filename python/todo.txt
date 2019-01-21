@@ -32,14 +32,16 @@ x Clean up the code
 x Fix the performance issues with ThreadsafeStream (it was actually a bug)
 
 - Write an oscilloscope app
-    - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
-        - If no zeros are available, give up and render the most recent page
-    - Search for the zero that best matches the previously-rendered page
-        - Either sum-of-differences or correlation
-    - Search constraints
-        - Start of next page should be after the end of current page
-        - If less than ~N pages are available, wait
-        - If many pages are available, constrain the search space to the most recent ~M pages
+    - Get audio input
+    x Search for the zero that best matches the previously-rendered page
+        - Start of a page should be at a "zero" (upward-sloped crossing of the x-axis)
+            - If no zeros are available, give up and render the most recent page
+        - Search for the zero that best matches the previously-rendered page
+            - Either sum-of-differences or correlation
+        - Search constraints
+            - Start of next page should be after the end of current page
+            - If less than ~N pages are available, wait
+            - If many pages are available, constrain the search space to the most recent ~M pages
 
 - Create a musical keyboard?
     - ADSR style
